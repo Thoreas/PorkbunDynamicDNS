@@ -4,6 +4,7 @@
 API_KEY=""
 API_SECRET=""
 DOMAIN=""
+API_URL="https://porkbun.com/api/json/v3"
 #Optional
 SUBDOMAIN=""
 
@@ -19,18 +20,18 @@ if [ -z "$DOMAIN" ]; then
 fi
 
 # Get current IP using Porkbun's API
-CURRENT_IP=$(curl -s -X POST "https://porkbun.com/api/json/v3/ping" -H "Content-Type: application/json" --data "{ \"apikey\": \"$API_KEY\", \"secretapikey\": \"$API_SECRET\" }" | grep -Po '(?<="yourIp":")[^"]+')
+CURRENT_IP=$(curl -s -X POST "$API_URL/ping" -H "Content-Type: application/json" --data "{ \"apikey\": \"$API_KEY\", \"secretapikey\": \"$API_SECRET\" }" | grep -Po '(?<="yourIp":")[^"]+')
 if [ -z "$CURRENT_IP" ]; then
 	echo "Could not get current external IP address!" | tee >(cat >&2) | systemd-cat -t $0
 	exit
 fi
 
 # Get current DNS record
-CURRENT_DNS_RECORD=$(curl -s -X POST "https://porkbun.com/api/json/v3/dns/retrieveByNameType/$DOMAIN/A/$SUBDOMAIN" -H "Content-Type: application/json" --data "{ \"apikey\": \"$API_KEY\", \"secretapikey\": \"$API_SECRET\" }" | grep -Po '(?<="content":")[^"]+')
+CURRENT_DNS_RECORD=$(curl -s -X POST "$API_URL/dns/retrieveByNameType/$DOMAIN/A/$SUBDOMAIN" -H "Content-Type: application/json" --data "{ \"apikey\": \"$API_KEY\", \"secretapikey\": \"$API_SECRET\" }" | grep -Po '(?<="content":")[^"]+')
 
 # Check if DNS record needs updating
 if [[ $CURRENT_DNS_RECORD != $CURRENT_IP ]]; then
-	RESPONSE=$(curl -s -X POST "https://porkbun.com/api/json/v3/dns/editByNameType/$DOMAIN/A/$SUBDOMAIN" -H "Content-Type: application/json" --data "{ \"apikey\": \"$API_KEY\", \"secretapikey\": \"$API_SECRET\", \"content\": \"$CURRENT_IP\", \"ttl\": \"300\" }")
+	RESPONSE=$(curl -s -X POST "$API_URL/dns/editByNameType/$DOMAIN/A/$SUBDOMAIN" -H "Content-Type: application/json" --data "{ \"apikey\": \"$API_KEY\", \"secretapikey\": \"$API_SECRET\", \"content\": \"$CURRENT_IP\", \"ttl\": \"300\" }")
 	if [[ $RESPONSE =~ "SUCCESS" ]]; then
 		echo "DNS record for $SUBDOMAIN.$DOMAIN updated with IP $CURRENT_IP" | systemd-cat -t $0
 	else
